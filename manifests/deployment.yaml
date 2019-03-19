@@ -1,0 +1,102 @@
+# Copyright (C) 2019 Jorrit "Chainfire" Jongma
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+# [START kubernetes_deployment]
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: hideyhole
+  labels:
+    app: hideyhole
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: hideyhole
+    spec:
+      containers:
+      - name: hideyhole-app
+        image: gcr.io/hideyhole-django/hideyhole
+        # This setting makes nodes pull the docker image every time before
+        # starting the pod. This is useful when debugging, but should be turned
+        # off in production.
+        imagePullPolicy: Always
+        env:
+            # [START cloudsql_secrets]
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: cloudsql
+                  key: username
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cloudsql
+                  key: password
+            # [END cloudsql_secrets]
+            # [START python secrets]
+            - name: DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: django
+                  key: secret
+            - name: REDDIT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: redditapi
+                  key: id
+            - name: REDDIT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: redditapi
+                  key: secret
+            - name: REDDIT_USER_AGENT
+              valueFrom:
+                secretKeyRef:
+                  name: redditapi
+                  key: agent
+            # [END python secrets]
+        ports:
+        - containerPort: 8080
+
+      # [START proxy_container]
+      - image: gcr.io/cloudsql-docker/gce-proxy:1.05
+        name: cloudsql-proxy
+        command: ["/cloud_sql_proxy", "--dir=/cloudsql",
+                  "-instances=hideyhole-django:us-central1:postgres=tcp:5432",
+                  "-credential_file=/secrets/cloudsql/credentials.json"]
+        volumeMounts:
+          - name: cloudsql-oauth-credentials
+            mountPath: /secrets/cloudsql
+            readOnly: true
+          - name: ssl-certs
+            mountPath: /etc/ssl/certs
+          - name: cloudsql
+            mountPath: /cloudsql
+      # [END proxy_container]
+
+      # [START volumes]
+      volumes:
+        - name: cloudsql-oauth-credentials
+          secret:
+            secretName: cloudsql-oauth-credentials
+        - name: ssl-certs
+          hostPath:
+            path: /etc/ssl/certs
+        - name: cloudsql
+          emptyDir:
+      # [END volumes]        
+# [END kubernetes_deployment]
