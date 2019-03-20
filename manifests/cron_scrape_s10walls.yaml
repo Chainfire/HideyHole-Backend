@@ -51,21 +51,6 @@ spec:
                   secretKeyRef:
                     name: django
                     key: secret
-              - name: REDDIT_ID
-                valueFrom:
-                  secretKeyRef:
-                    name: redditapi
-                    key: id
-              - name: REDDIT_SECRET
-                valueFrom:
-                  secretKeyRef:
-                    name: redditapi
-                    key: secret
-              - name: REDDIT_USER_AGENT
-                valueFrom:
-                  secretKeyRef:
-                    name: redditapi
-                    key: agent
               # [END python secrets]
 
           # [START proxy_container]
