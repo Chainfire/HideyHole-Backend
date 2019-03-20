@@ -39,3 +39,4 @@ delete:
 	kubectl delete service hideyhole
 	kubectl delete ingress hideyhole-ingress
 	kubectl delete deployment hideyhole
+	gsutil rb gs://$(GCLOUD_PROJECT)
