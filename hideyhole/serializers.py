@@ -30,7 +30,7 @@ class ImageFullSerializer(serializers.ModelSerializer):
         return obj.image_full_height
 
     def get_url(self, obj):
-        return obj.image_full_url
+        return obj.image_source_url
 
     class Meta:
         model = Wallpaper
