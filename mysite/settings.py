@@ -114,5 +114,3 @@ STATIC_URL = 'https://storage.googleapis.com/hideyhole-django/static/'
 # [END staticurl]
 
 STATIC_ROOT = 'static/'
-
-SCRAPED_IMAGES_BUCKET = 'hideyhole'

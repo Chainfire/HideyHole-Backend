@@ -66,6 +66,31 @@ spec:
                   secretKeyRef:
                     name: redditapi
                     key: agent
+              - name: STORAGE_SSH_HOST
+                valueFrom:
+                  secretKeyRef:
+                    name: image-storage
+                    key: host
+              - name: STORAGE_SSH_PORT
+                valueFrom:
+                  secretKeyRef:
+                    name: image-storage
+                    key: port
+              - name: STORAGE_SSH_PATH
+                valueFrom:
+                  secretKeyRef:
+                    name: image-storage
+                    key: path
+              - name: STORAGE_SSH_USERNAME
+                valueFrom:
+                  secretKeyRef:
+                    name: image-storage
+                    key: username
+              - name: STORAGE_SSH_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: image-storage
+                    key: key
               # [END python secrets]
 
           # [START proxy_container]

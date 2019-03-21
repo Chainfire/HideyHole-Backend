@@ -20,20 +20,30 @@ import hashlib
 import datetime
 
 from PIL import Image
-from google.cloud import storage
+import paramiko
+from scp import SCPClient
 
-from mysite.settings import SCRAPED_IMAGES_BUCKET
 from hideyhole.models import BannedUrl, Wallpaper
 
 
-__client = None
-__bucket = None
+class KeyPolicy(paramiko.client.MissingHostKeyPolicy):
+    def __init__(self):
+        pass
+
+    def missing_host_key(self, client, hostname, key):
+        pass
+
+
+class KeyWrapper():
+    def __init__(self, data):
+        self.data = data
+
+    def readlines(self):
+        return [x + '\n' for x in self.data.split(';')]
 
 
 # this is only called from cron/shell scripts that should continue, hence the odd error handling
 def save_scraped_wallpaper(author, title, category, popularity, source_url, image_url, added):
-    global __client, __bucket
-
     if not image_url.lower().endswith('.jpg') and not image_url.lower().endswith('.png'):
         print("FAIL [%s] does not end with [.jpg|.png]" % source_url)
         return
@@ -110,37 +120,24 @@ def save_scraped_wallpaper(author, title, category, popularity, source_url, imag
         print("FAIL [%s] Thumbnail create fail" % source_url)
         return
 
-    # Google Cloud Storage
+    # our own storage server, env variables from secrets
     try:
-        if __client is None:
-            storage_account = os.getenv('CLOUDSTORAGE_SERVICE_ACCOUNT_JSON')
-            if storage_account:
-                __client = storage.Client.from_service_account_json(storage_account)
-            else:
-                __client = storage.Client()
-        if __client is None:
-            print("FAIL [%s] Could not create Cloud Storage Client" % source_url)
-            return
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(KeyPolicy())
+        pkey = paramiko.RSAKey.from_private_key(KeyWrapper(os.getenv("STORAGE_SSH_KEY")))
+        ssh.connect(os.getenv("STORAGE_SSH_HOST"), username=os.getenv("STORAGE_SSH_USERNAME"), pkey=pkey, port=int(os.getenv("STORAGE_SSH_PORT")), timeout=30, allow_agent=False, look_for_keys=False, compress=False)
 
-        if __bucket is None:
-            __bucket = __client.bucket(SCRAPED_IMAGES_BUCKET)
-        if __bucket is None:
-            print("FAIL [%s] Could not create Cloud Storage Bucket" % source_url)
-            return
+        scp = SCPClient(ssh.get_transport())
+        scp.putfo(io.BytesIO(image_full_bytes), os.getenv("STORAGE_SSH_PATH") + filename_full)
+        scp.putfo(io.BytesIO(image_thumb_bytes), os.getenv("STORAGE_SSH_PATH") + filename_thumb)
+        scp.close()
 
-        blob = __bucket.blob(filename_full)
-        if blob.exists():
-            __bucket.delete_blob(filename_full)
-        blob.upload_from_string(image_full_bytes, 'image/png' if png else 'image/jpeg')
-
-        blob = __bucket.blob(filename_thumb)
-        if blob.exists():
-            __bucket.delete_blob(filename_thumb)
-        blob.upload_from_string(image_thumb_bytes, 'image/png' if png else 'image/jpeg')
+        ssh.close()
     except Exception as e:
-        print("FAIL [%s] Unexpected issue saving to Google Cloud Storage [%s]" % (source_url, str(e)))
+        print("FAIL [%s] Unexpected issue saving to storage server [%s]" % (source_url, str(e)))
         return
 
+    # save
     try:
         Wallpaper(
             added=datetime.datetime.fromtimestamp(added, tz=datetime.timezone.utc),
@@ -151,10 +148,10 @@ def save_scraped_wallpaper(author, title, category, popularity, source_url, imag
             popularity_app=0,
             popularity_total=popularity,
             source_url=source_url,
-            image_full_url='https://storage.googleapis.com/%s/%s' % (SCRAPED_IMAGES_BUCKET, filename_full),
+            image_full_url='https://hideyhole-images.chainfire.eu/' % filename_full,
             image_full_width=width,
             image_full_height=height,
-            image_thumbnail_url='https://storage.googleapis.com/%s/%s' % (SCRAPED_IMAGES_BUCKET, filename_thumb),
+            image_thumbnail_url='https://hideyhole-images.chainfire.eu/' % filename_thumb,
             image_thumbnail_width=360,
             image_thumbnail_height=760,
             image_source_url=image_url,
