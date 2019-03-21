@@ -92,12 +92,11 @@ def save_scraped_wallpaper(author, title, category, popularity, source_url, imag
         print("FAIL [%s] Image decode failed" % source_url)
         return
 
-    png = False
+    source_png = False
     if im.mode == 'RGBA' or im.mode == 'LA' or im.mode == 'P' or image_url.endswith('.png'):
-        png = True
-    filename = sha1 + ('.png' if png else '.jpg')
-    filename_full = 'images/' + filename
-    filename_thumb = 'thumbnails/' + filename
+        source_png = True
+    filename_full = 'images/' + sha1 + ('.png' if source_png else '.jpg')
+    filename_thumb = 'thumbnails/' + sha1 + '.jpg'
     image_full_bytes = image_request.content
 
     width, height = im.size
@@ -110,11 +109,17 @@ def save_scraped_wallpaper(author, title, category, popularity, source_url, imag
     try:
         thumb = Image.open(io.BytesIO(image_request.content))
         thumb.thumbnail((360, 760), Image.LANCZOS)
+
+        if thumb.mode == 'P':
+            # convert Palette images to RGBA before converting to RGB
+            thumb = thumb.convert("RGBA")
+
+        if thumb.mode != 'RGB':
+            # make sure we can save as jpeg
+            thumb = thumb.convert("RGB")
+
         with io.BytesIO() as output:
-            if png:
-                thumb.save(output, "PNG")
-            else:
-                thumb.save(output, "JPEG", quality=80)
+            thumb.save(output, "JPEG", quality=80)
             image_thumb_bytes = output.getvalue()
     except:
         print("FAIL [%s] Thumbnail create fail" % source_url)
@@ -148,10 +153,10 @@ def save_scraped_wallpaper(author, title, category, popularity, source_url, imag
             popularity_app=0,
             popularity_total=popularity,
             source_url=source_url,
-            image_full_url='https://hideyhole-images.chainfire.eu/' % filename_full,
+            image_full_url='https://hideyhole-images.chainfire.eu/%s' % filename_full,
             image_full_width=width,
             image_full_height=height,
-            image_thumbnail_url='https://hideyhole-images.chainfire.eu/' % filename_thumb,
+            image_thumbnail_url='https://hideyhole-images.chainfire.eu/%s' % filename_thumb,
             image_thumbnail_width=360,
             image_thumbnail_height=760,
             image_source_url=image_url,
