@@ -108,7 +108,7 @@ def save_scraped_wallpaper(author, title, category, popularity, source_url, imag
 
     try:
         thumb = Image.open(io.BytesIO(image_request.content))
-        thumb.thumbnail((360, 760), Image.LANCZOS)
+        thumb.thumbnail((180, 380), Image.LANCZOS)
 
         if thumb.mode == 'P':
             # convert Palette images to RGBA before converting to RGB
@@ -157,8 +157,8 @@ def save_scraped_wallpaper(author, title, category, popularity, source_url, imag
             image_full_width=width,
             image_full_height=height,
             image_thumbnail_url='https://hideyhole-images.chainfire.eu/%s' % filename_thumb,
-            image_thumbnail_width=360,
-            image_thumbnail_height=760,
+            image_thumbnail_width=180,
+            image_thumbnail_height=380,
             image_source_url=image_url,
             image_source_sha1=sha1
         ).save()
