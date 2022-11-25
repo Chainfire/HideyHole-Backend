@@ -30,5 +30,8 @@ ADD requirements.txt /app/requirements.txt
 RUN /env/bin/pip install --upgrade pip && /env/bin/pip install -r /app/requirements.txt
 ADD . /app
 
+RUN rm -rf static
+RUN python3 manage.py collectstatic
+
 CMD gunicorn -b :$PORT mysite.wsgi
 # [END docker]

@@ -1,42 +1,37 @@
-GCLOUD_PROJECT:=$(shell gcloud config list project --format="value(core.project)")
+REGISTRY=localhost:35000
+REGISTRY_K8S=k3d-main-registry.localhost:5000
+PROJECT=hideyhole
+NAMESPACE=hideyhole
+DEPLOYMENT=hideyhole
+CONTAINER=hideyhole-app
+IMAGE=hideyhole
+
+SHORT_SHA:=$(shell git rev-parse --short HEAD)
 
 .PHONY: all
 all: deploy
 
-.PHONY: create-cluster
-create-cluster:
-	gcloud container clusters create hideyhole \
-		--scopes "https://www.googleapis.com/auth/userinfo.email","cloud-platform" \
-		--num-nodes 4 --zone "us-central1-b"
-
-.PHONY: create-bucket
-create-bucket:
-	gsutil mb gs://$(GCLOUD_PROJECT)
-	gsutil defacl set public-read gs://$(GCLOUD_PROJECT)
-
 .PHONY: build
 build:
-	docker build -t gcr.io/$(GCLOUD_PROJECT)/hideyhole .
+	docker build -t $(REGISTRY)/$(PROJECT)/$(IMAGE):$(SHORT_SHA) .
 
 .PHONY: push
 push: build
-	docker push gcr.io/$(GCLOUD_PROJECT)/hideyhole
+	docker push $(REGISTRY)/$(PROJECT)/$(IMAGE):$(SHORT_SHA)
 
 .PHONY: deploy
 deploy: push
-	kubectl create -f ../hideyhole-backend-manifests/hideyhole.yaml
-	kubectl expose deployment hideyhole --target-port=8080 --type=NodePort
-	kubectl apply -f ../hideyhole-backend-manifests/ingress.yaml
+	kubectl apply -f manifests/k3d/deployment.yaml
+	kubectl apply -f manifests/k3d/service.yaml
+	kubectl apply -f manifests/k3d/ingress.yaml
+	kubectl set image -n $(NAMESPACE) deployment/$(PROJECT) $(CONTAINER)=$(REGISTRY_K8S)/$(PROJECT)/$(IMAGE):$(SHORT_SHA)
 
-.PHONY: update
-update:
-	kubectl patch deployment hideyhole -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
-
-.PHONY: delete
-delete:
-	kubectl delete rc hideyhole
-	kubectl delete service hideyhole
-	kubectl delete service hideyhole
-	kubectl delete ingress hideyhole-ingress
-	kubectl delete deployment hideyhole
-	gsutil rb gs://$(GCLOUD_PROJECT)
+#to be ported
+#.PHONY: delete
+#delete:
+#	kubectl delete rc hideyhole
+#	kubectl delete service hideyhole
+#	kubectl delete service hideyhole
+#	kubectl delete ingress hideyhole-ingress
+#	kubectl delete deployment hideyhole
+#	gsutil rb gs://$(GCLOUD_PROJECT)

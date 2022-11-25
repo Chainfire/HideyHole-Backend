@@ -83,10 +83,10 @@ DATABASES = {
         # If you are using Cloud SQL for MySQL rather than PostgreSQL, set
         # 'ENGINE': 'django.db.backends.mysql' instead of the following.
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'hideyhole',
+        'NAME': os.getenv('DATABASE_NAME') or 'hideyhole',
         'USER': os.getenv('DATABASE_USER'),
         'PASSWORD': os.getenv('DATABASE_PASSWORD'),
-        'HOST': '127.0.0.1',
+        'HOST': os.getenv('DATABASE_HOST') or '127.0.0.1',
         'PORT': os.getenv('DATABASE_PORT') or '5432',
     }
 }

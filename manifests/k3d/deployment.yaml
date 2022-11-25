@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: hideyhole
+  name: hideyhole
+  namespace: hideyhole
+spec:
+  progressDeadlineSeconds: 2147483647
+  replicas: 1
+  revisionHistoryLimit: 2147483647
+  selector:
+    matchLabels:
+      app: hideyhole
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: hideyhole
+    spec:
+      containers:
+      - env:
+        - name: DATABASE_NAME
+          valueFrom:
+            secretKeyRef:
+              key: database
+              name: postgres
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: postgres
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: postgres
+        - name: DATABASE_HOST
+          valueFrom:
+            secretKeyRef:
+              key: host
+              name: postgres
+        - name: DATABASE_PORT
+          valueFrom:
+            secretKeyRef:
+              key: port
+              name: postgres
+        - name: DJANGO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: secret
+              name: django
+        image: k3d-main-registry.localhost:5000/hideyhole/hideyhole:latest
+        imagePullPolicy: Always
+        name: hideyhole-app
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status: {}
